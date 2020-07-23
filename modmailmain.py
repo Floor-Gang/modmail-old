@@ -12,6 +12,7 @@ class Bot(commands.Bot):
         self.db_conn = database_conn
 
         self.load_extension('cogs.modmail')
+        self.load_extension('cogs.admin')
 
     @staticmethod
     async def on_ready():
