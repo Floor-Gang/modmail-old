@@ -5,7 +5,6 @@ import typing
 class ModmailCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.reddit = bot.reddit_conn
         self.db_conn = bot.db_conn
 
     # Reply takes a text of max 2048 characters
