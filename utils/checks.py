@@ -23,8 +23,6 @@ def owner_check(ctx) -> bool:
     config = configparser.ConfigParser()
     config.read('./conf.ini')
     owners = json.loads(config.get('global', 'owners'))
-    print(owners)
-    print(type(owners))
 
     return ctx.author.id in owners
 
