@@ -5,10 +5,16 @@ import asyncpg
 import typing
 
 
-class categorySelector:
+# the class category selector is for the user side
+#  The user can select what category their modmail is for
+class category_selector:
 
+    # Run takes bot commands.Bot, db_conn asyncpg.Pool, and message discord.Message
+    #   Asks the user for the desired category and listens for reaction
+    #   on_reaction => check the database if the reaction is valid and sends error if not
+    #   returns discord.CategoryChannel and discord.Guild on success, None on failure
     @staticmethod
-    async def run(bot: commands.Bot, db_conn: asyncpg.pool.Pool, message: discord.Message) -> \
+    async def start_embed(bot: commands.Bot, db_conn: asyncpg.pool.Pool, message: discord.Message) -> \
             typing.Optional[typing.Tuple[discord.CategoryChannel, discord.Guild]]:
 
         try:
@@ -27,7 +33,7 @@ class categorySelector:
             reaction, _ = await bot.wait_for('reaction_add',
                                              check=lambda react,
                                                           user: react.message.id == msg.id and user == message.author,
-                                             timeout=30)
+                                             timeout=120)
 
             db_category = await db_conn.fetchrow(
                 "SELECT category_id, guild_id FROM modmail.categories WHERE emote_id=$1 AND active=true",
@@ -70,17 +76,15 @@ class messageHandlingTasks(commands.Cog):
             check_muted = await self.db_conn.fetchrow(
                 "SELECT active FROM modmail.muted WHERE user_id=$1 AND active=true", message.author.id)
             if check_muted:
-                await message.channel.send(embed=common_embed('Muted', 'You are muted from modmail'))
                 return
 
             conv = await self.db_conn.fetchrow(
                 "SELECT conversation_id, channel_id FROM modmail.conversations WHERE user_id=$1 AND active=true",
                 message.author.id)
             if not conv:
-                category, guild = await categorySelector.run(self.bot, self.db_conn, message) or (None, None)
+                category, guild = await category_selector.start_embed(self.bot, self.db_conn, message) or (None, None)
 
                 if category is None:
-                    print('Uh oh')
                     return
 
                 channel = await guild.create_text_channel(f'{message.author.name}-{message.author.discriminator}',

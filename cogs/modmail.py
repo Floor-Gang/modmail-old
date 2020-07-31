@@ -151,7 +151,7 @@ class ModmailCog(commands.Cog):
             embed=common_embed('Created conversation', f'Thread created by {ctx.author.mention} for {user.mention}'))
 
         try:
-            await user.send(embed=common_embed('Conversation created', 'A modmail was created to contact you'))
+            await user.send(embed=common_embed('Conversation created', f'A modmail was created to contact {user}'))
         except discord.Forbidden:
             await channel.send(embed=common_embed('Create conversation',
                                                   'The user has dm\'s disabled so I can\'t reach out\n'
@@ -470,13 +470,13 @@ class ModmailCog(commands.Cog):
                         row[0])
                     embed_messages = list()
 
-                    for index, message in enumerate(messages):
+                    for index, message in enumerate(messages, 1):
                         if message[2]:
                             embed_messages.append(
-                                f'[{index + 1}] - ~~{message[0]}~~ ~ <@{message[1]}> {"(mod)" if message[3] else ""}')
+                                f'[{index}] - ~~{message[0]}~~ ~ <@{message[1]}> {"(mod)" if message[3] else ""}')
                         else:
                             embed_messages.append(
-                                f'[{index + 1}] - {message[0]} ~ <@{message[1]}> {"(mod)" if message[3] else ""}')
+                                f'[{index}] - {message[0]} ~ <@{message[1]}> {"(mod)" if message[3] else ""}')
 
                     embed.add_field(name='Messages:',
                                     value="\n".join(embed_messages if embed_messages else ["No messages"]),
