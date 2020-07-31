@@ -7,6 +7,7 @@ from asyncpg import ForeignKeyViolationError
 from natural.date import duration
 from utils.checks import *
 from utils.common_embed import *
+from utils.reply import *
 
 
 class ModmailCog(commands.Cog):
@@ -37,24 +38,7 @@ class ModmailCog(commands.Cog):
                                               f'You are currently not in a modmail thread, if you want to create one look at `{ctx.prefix}help create`'))
             return
 
-        user = self.bot.get_user(conv[1])
-
-        usr_embed = common_embed('', message, color=self.yellow)
-        usr_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        usr_embed.set_footer(text=ctx.author.roles[-1].name)
-        usr_msg = await user.send(embed=usr_embed)
-
-        thread_embed = common_embed('', message, color=self.green)
-        thread_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        thread_embed.set_footer(text=ctx.author.roles[-1].name)
-        mod_msg = await ctx.send(embed=thread_embed)
-
-        await self.db_conn.execute("INSERT INTO modmail.messages \
-                                   (message_id, message, author_id, conversation_id, other_side_message_id, made_by_mod)\
-                                   VALUES ($1, $2, $3, $4, $5, true)",
-                                   mod_msg.id, message, ctx.author.id, conv[0], usr_msg.id)
-
-        await ctx.message.delete()
+        await reply(self.bot, ctx, self.db_conn, conv[1], message, conv[0])
 
     @reply.error
     async def reply_error(self, ctx, err: any) -> None:
@@ -67,6 +51,9 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
+    # Reply takes a text of max 2048 characters
+    #  replies to modmail with the inputted text anonymously
+    #  sends reply on success, error on failure
     @commands.command(aliases=['ar'])
     @is_owner()
     async def anonymous_reply(self, ctx, *, message: str) -> None:
@@ -84,27 +71,7 @@ class ModmailCog(commands.Cog):
                                               f'You are currently not in a modmail thread, if you want to create one look at `{ctx.prefix}help create`'))
             return
 
-        user = self.bot.get_user(conv[1])
-
-        usr_embed = discord.Embed(color=self.yellow)
-        usr_embed.set_author(name="Moderator")
-        usr_embed.timestamp = datetime.datetime.now()
-        usr_embed.description = message
-        usr_msg = await user.send(embed=usr_embed)
-
-        thread_embed = discord.Embed(color=self.green)
-        thread_embed.set_author(name=ctx.author, icon_url=ctx.author.avatar_url)
-        thread_embed.set_footer(text="Anonymous Reply")
-        thread_embed.timestamp = datetime.datetime.now()
-        thread_embed.description = message
-        mod_msg = await ctx.send(embed=thread_embed)
-
-        await self.db_conn.execute("INSERT INTO modmail.messages \
-                                   (message_id, message, author_id, conversation_id, other_side_message_id, made_by_mod)\
-                                   VALUES ($1, $2, $3, $4, $5, true)",
-                                   mod_msg.id, message, ctx.author.id, conv[0], usr_msg.id)
-
-        await ctx.message.delete()
+        await reply(self.bot, ctx, self.db_conn, conv[1], message, conv[0], anon=True)
 
     @anonymous_reply.error
     async def anonymous_reply_error(self, ctx, err: any) -> None:
@@ -117,12 +84,19 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
+    # create takes user discord.Member, int and category int, str.
+    #  If category string => Fetches category from string.
+    #  Creates modmail thread and notifies the user about it.
+    #  Creates channel on success, error on failure.
     @commands.command()
     @is_owner()
     async def create(self, ctx, user: typing.Union[discord.Member, int],
                      category: typing.Union[int, str]) -> None:
+
+        main_guild = self.bot.get_guild(self.conf.get('global', 'main_server_id'))
+
         if isinstance(user, int):
-            user = await self.bot.fetch_user(user)
+            user = main_guild.get_member(user)
 
         if not user:
             await ctx.send(embed=common_embed('Create conversation',
@@ -130,16 +104,21 @@ class ModmailCog(commands.Cog):
             return
 
         if isinstance(category, int):
+            db_category = await self.db_conn.fetchrow('SELECT guild_id FROM modmail.categories WHERE category_id = $1',
+                                                      category)
             category = self.bot.get_channel(category)
-        elif isinstance(category, str):
-            db_category = await self.db_conn.fetchrow('SELECT category_id FROM modmail.categories WHERE lower(category_name) = lower($1) AND active=true', category)
-            category = self.bot.get_channel(db_category[0])
+        else:
+            db_category = await self.db_conn.fetchrow(
+                'SELECT guild_id, category_id FROM modmail.categories WHERE lower(category_name) = lower($1) AND active=true',
+                category)
+            category = self.bot.get_channel(db_category[1])
             if not category:
                 await ctx.send(embed=common_embed('Create conversation',
                                                   "Unable to fetch that category please check spelling or use the id"))
                 return
 
-        channel = await ctx.guild.create_text_channel(name=f'{user.name}-{user.discriminator}', category=category)
+        guild = self.bot.get_guild(db_category[0])
+        channel = await guild.create_text_channel(name=f'{user.name}-{user.discriminator}', category=category)
 
         try:
             await self.db_conn.execute("INSERT INTO modmail.conversations \
@@ -158,12 +137,13 @@ class ModmailCog(commands.Cog):
         created_ago = datetime.datetime.now() - user.created_at
         joined_ago = datetime.datetime.now() - user.joined_at
 
-        chnl_embed = discord.Embed(color=0x7289da)
+        chnl_embed = common_embed('',
+                                  f"{user.mention} was created {created_ago.days} days ago, " 
+                                  f"joined {joined_ago.days} days ago" 
+                                  f" with **{'no' if len(past_threads) == 0 else len(past_threads)}** past threads",
+                                  color=0x7289da)
         chnl_embed.set_author(name=str(user), icon_url=user.avatar_url)
-        chnl_embed.description = f"{user.mention} was created {created_ago.days} days ago, " \
-                                 f"joined {joined_ago.days} days ago" \
-                                 f" with **{'no' if len(past_threads) == 0 else len(past_threads)}** past threads"
-        roles = " ".join([role.mention for role in user.roles if role.id != ctx.guild.id])
+        roles = " ".join([role.mention for role in user.roles if role.id != main_guild.id])
         chnl_embed.add_field(name='Roles', value=roles if roles else 'No Roles')
         await channel.send(embed=chnl_embed)
 
@@ -199,7 +179,7 @@ class ModmailCog(commands.Cog):
 
     # Close takes no arguments
     #  closes the modmail thread aka channel
-    #  sends error on failure
+    #  sends confirmation on success, error on failure
     @commands.command()
     @is_owner()
     async def close(self, ctx) -> None:
@@ -233,6 +213,11 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
+    # edit takes message str max size of 2048 characters
+    #  Checks on what side it is on
+    #  If on mod side => edits the most recent message made by mod
+    #  If on user side => Edits the most recent message and notifies the mods about it and shows original state
+    #  Edits message on success error on failure.
     @commands.command()
     @is_owner()
     async def edit(self, ctx, *, message: str) -> None:
@@ -241,7 +226,7 @@ class ModmailCog(commands.Cog):
                                                   FROM modmail.messages\
                                                   INNER JOIN modmail.conversations\
                                                   ON messages.conversation_id = conversations.conversation_id\
-                                                  WHERE conversations.user_id=$1 AND messages.made_by_mod = false AND deleted = false\
+                                                  WHERE conversations.user_id=$1 AND messages.made_by_mod = false AND messages.deleted = false\
                                                   ORDER BY messages.created_at DESC LIMIT 1", ctx.author.id)
             if not results:
                 await ctx.send(embed=common_embed('Edit message', 'Theres no message made in this thread yet'))
@@ -274,8 +259,8 @@ class ModmailCog(commands.Cog):
                                                   FROM modmail.messages\
                                                   INNER JOIN modmail.conversations\
                                                   ON messages.conversation_id = conversations.conversation_id\
-                                                  WHERE conversations.channel_id = $1 AND messages.made_by_mod = true AND deleted = false\
-                                                  ORDER BY messages.created_at DESC LIMIT 1", ctx.channel.id)
+                                                  WHERE conversations.channel_id = $1 AND messages.made_by_mod = true AND deleted = false AND messages.author_id = $2\
+                                                  ORDER BY messages.created_at DESC LIMIT 1", ctx.channel.id, ctx.author.id)
             if not results:
                 await ctx.send(embed=common_embed('Edit message', 'Theres no message made in this thread yet'))
                 return
@@ -312,6 +297,10 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
+    # Delete takes no arguments.
+    #  Only available for mods, user runs on event
+    #  If there is a message to delete => Deletes the message on user and mod side
+    #  Returns nothing on success, error on failure
     @commands.command()
     @is_owner()
     async def delete(self, ctx) -> None:
@@ -343,6 +332,12 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
+    # forward takes category int, str
+    #  If category int => checks if valid returns error on failure
+    #  If category str => fetches category id from db with the name
+    #  Forwards the conversation to the selected category
+    #  Sends every previous message in new thread and deletes old channel
+    #  Returns confirmation on success, error on failure
     @commands.command()
     @is_owner()
     async def forward(self, ctx, category: typing.Union[int, str]) -> None:
@@ -425,8 +420,8 @@ class ModmailCog(commands.Cog):
         else:
             await ctx.send(f"Unknown error occurred.\n{str(err)}")
 
-    # Logs takes no arguments
-    #  displays the discord user's past modmails (Perhaps in paginator(s)?)
+    # Logs takes optional user discord.Member, int
+    #  displays the discord user's past modmails in pages
     #  sends paginator(s) on success, error on failure
     @commands.command()
     @is_owner()
