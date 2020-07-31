@@ -132,7 +132,8 @@ class ModmailCog(commands.Cog):
         if isinstance(category, int):
             category = self.bot.get_channel(category)
         elif isinstance(category, str):
-            category = discord.utils.get(ctx.guild.categories, name=category.lower())
+            db_category = await self.db_conn.fetchrow('SELECT category_id FROM modmail.categories WHERE lower(category_name) = lower($1) AND active=true', category)
+            category = self.bot.get_channel(db_category[0])
             if not category:
                 await ctx.send(embed=common_embed('Create conversation',
                                                   "Unable to fetch that category please check spelling or use the id"))

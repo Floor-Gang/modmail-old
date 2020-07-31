@@ -1,4 +1,3 @@
-import discord
 from discord.ext import commands
 from utils.common_embed import *
 import asyncio
@@ -15,6 +14,12 @@ class messageHandlingTasks(commands.Cog):
     async def dm_message_listener(self, message: discord.Message) -> None:
         if message.guild is None:
             if (message.content.startswith(self.bot.command_prefix)) or (message.author == self.bot.user):
+                return
+
+            check_muted = await self.db_conn.fetchrow(
+                "SELECT active FROM modmail.muted WHERE user_id=$1 AND active=true", message.author.id)
+            if check_muted:
+                await message.channel.send(embed=common_embed('Muted', 'You are muted from modmail'))
                 return
 
             conv = await self.db_conn.fetchrow(
@@ -72,6 +77,11 @@ class messageHandlingTasks(commands.Cog):
 
                     thread_embed = common_embed('', message.content, color=self.yellow)
                     thread_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+
+                    for attachment in message.attachments:
+                        thread_embed.add_field(name=f'File upload ({len(message.attachments)})',
+                                               value=f'[{attachment.filename}]({attachment.url})')
+
                     thread_embed.set_footer(text=f"Message ID: {message.id}")
                     thread_msg = await channel.send(embed=thread_embed)
 
@@ -93,6 +103,11 @@ class messageHandlingTasks(commands.Cog):
                                              f'\'{message.content}\'\n\n *if this isn\'t correct you can change it with {self.bot.command_prefix}edit*',
                                              color=self.green)
                     usr_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+
+                    for attachment in message.attachments:
+                        usr_embed.add_field(name=f'File upload ({len(message.attachments)})',
+                                            value=f'[{attachment.filename}]({attachment.url})')
+
                     usr_embed.set_footer(text=f"Message ID: {message.id}")
                     await message.channel.send(embed=usr_embed)
 
@@ -103,8 +118,13 @@ class messageHandlingTasks(commands.Cog):
 
             else:
                 channel = await self.bot.fetch_channel(conv[1])
+
                 thread_embed = common_embed('', message.content, color=self.yellow)
                 thread_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+
+                for attachment in message.attachments:
+                    thread_embed.add_field(name=f'File upload ({len(message.attachments)})',
+                                           value=f'[{attachment.filename}]({attachment.url})')
                 thread_embed.set_footer(text=f"Message ID: {message.id}")
                 thread_msg = await channel.send(embed=thread_embed)
 
@@ -112,6 +132,9 @@ class messageHandlingTasks(commands.Cog):
                                          f'\'{message.content}\'\n\n *if this isn\'t correct you can change it with {self.bot.command_prefix}edit*',
                                          color=self.green)
                 usr_embed.set_author(name=message.author, icon_url=message.author.avatar_url)
+                for attachment in message.attachments:
+                    usr_embed.add_field(name=f'File upload ({len(message.attachments)})',
+                                        value=f'[{attachment.filename}]({attachment.url})')
                 usr_embed.set_footer(text=f"Message ID: {message.id}")
                 await message.channel.send(embed=usr_embed)
                 await self.db_conn.execute("INSERT INTO modmail.messages \
