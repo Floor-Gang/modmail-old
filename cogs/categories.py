@@ -160,16 +160,17 @@ class CategoriesCog(commands.Cog):
             return
 
         try:
-            category = await ctx.guild.create_category(category_name)
-            await category.set_permissions(ctx.guild.default_role, read_messages=False, send_messages=False,
+            guild = await self.bot.fetch_guild(guild_id)
+            category = await guild.create_category(category_name)
+            await category.set_permissions(guild.default_role, read_messages=False, send_messages=False,
                                            read_message_history=False)
         except (discord.ext.commands.MissingPermissions, discord.errors.Forbidden):
-            ctx.send(embed=common_embed("Create category",
-                                        "Oof, I'm missing permissions. Please add them and try again."))
+            await ctx.send(embed=common_embed("Create category",
+                                              "Oof, I'm missing permissions. Please add them and try again."))
             return
         except Exception as e:
-            ctx.send(embed=common_embed("Create category",
-                                        "Oof, I'm missing permissions. Please add them and try again."))
+            await ctx.send(embed=common_embed("Create category",
+                                              "Oof, I'm missing permissions. Please add them and try again."))
             return
 
         await self.db_conn.execute("INSERT INTO modmail.categories \
