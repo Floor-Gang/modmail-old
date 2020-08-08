@@ -120,7 +120,7 @@ class messageHandlingTasks(commands.Cog):
                         joined_ago = datetime.datetime.now() - user.joined_at
                         chnl_embed_msg = f"{user.mention} was created {created_ago.days} days ago, "\
                                          f"joined {joined_ago.days} days ago"
-                    except:
+                    except AttributeError:
                         check = False
 
                 if not check:
