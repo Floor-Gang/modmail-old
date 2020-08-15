@@ -109,9 +109,6 @@ class messageHandlingTasks(commands.Cog):
 
             return
 
-        if (message.content.startswith(self.bot.command_prefix)) or (message.author == self.bot.user):
-            return
-
         check_muted = await self.db_conn.fetchrow("SELECT active \
                                                    FROM modmail.muted \
                                                    WHERE \
