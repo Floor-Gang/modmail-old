@@ -296,3 +296,4 @@ class TextPages(Pages):
         if self.maximum_pages > 1:
             return f'{entry}\nPage {page}/{self.maximum_pages}'
         return entry
+
