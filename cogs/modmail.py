@@ -251,7 +251,7 @@ class ModmailCog(commands.Cog):
                                                    ORDER BY messages.created_at DESC \
                                                    LIMIT 1", ctx.author.id)
             if not results:
-                await ctx.send(embed=common_embed("Edit message", "There's no message made in this thread yet"))
+                await ctx.send(embed=common_embed("Edit message", "You have not sent any messages in this thread yet"))
                 return
 
             mod_chnl = await self.bot.fetch_channel(results[3])
@@ -387,6 +387,8 @@ class ModmailCog(commands.Cog):
 
         if category is None:
             return
+        elif category == ctx.channel.category:
+            await ctx.send(embed=common_embed("Forward conversation", "This conversation is already in that thread"))
 
         usr_db = await self.db_conn.fetchrow("SELECT user_id, conversation_id \
                                               FROM modmail.conversations \
