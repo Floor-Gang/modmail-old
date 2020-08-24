@@ -388,7 +388,7 @@ class ModmailCog(commands.Cog):
         if category is None:
             return
         elif category == ctx.channel.category:
-            await ctx.send(embed=common_embed("Forward conversation", "This conversation is already in that thread"))
+            await ctx.send(embed=common_embed("Forward conversation", f"This conversation is already in category {category.name}"))
 
         usr_db = await self.db_conn.fetchrow("SELECT user_id, conversation_id \
                                               FROM modmail.conversations \
