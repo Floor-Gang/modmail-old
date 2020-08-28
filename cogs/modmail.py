@@ -287,14 +287,6 @@ class ModmailCog(commands.Cog):
             await ctx.send(embed=usr_embed)
             await mod_msg.edit(embed=thread_embed)
 
-            await self.db_conn.execute("UPDATE modmail.messages \
-                                        SET message=$1 \
-                                        WHERE \
-                                            message_id=$2",
-                                       message, results[0])
-
-            await ctx.message.add_reaction('✅')
-
         else:
             results = await self.db_conn.fetchrow("SELECT messages.message_id, messages.other_side_message_id, \
                                                           conversations.user_id \
@@ -327,13 +319,18 @@ class ModmailCog(commands.Cog):
             await usr_msg.edit(embed=usr_new_embed)
             await mod_msg.edit(embed=mod_new_embed)
 
-            await self.db_conn.execute("UPDATE modmail.messages \
-                                        SET message=$1 \
-                                        WHERE \
-                                            message_id=$2",
-                                       message, results[0])
+        await self.db_conn.execute("UPDATE modmail.messages \
+                                    SET message=$1 \
+                                    WHERE \
+                                        message_id=$2",
+                                   message, results[0])
+        await self.db_conn.execute("UPDATE modmail.all_messages_attachments \
+                                    SET message=$1 \
+                                    WHERE \
+                                        message_id=$2",
+                                   message, results[0])
 
-            await ctx.message.add_reaction('✅')
+        await ctx.message.add_reaction('✅')
 
     @edit.error
     async def edit_error(self, ctx, err: any) -> None:
@@ -354,7 +351,7 @@ class ModmailCog(commands.Cog):
     @commands.command()
     @has_access()
     @commands.guild_only()
-    async def delete(self, ctx, message: typing.Optional[discord.Message]) -> None:
+    async def delete(self, ctx, message: typing.Optional[int]) -> None:
         if message is None:
             results = await self.db_conn.fetchrow("SELECT messages.message_id, messages.other_side_message_id, \
                                                           conversations.user_id \
@@ -375,7 +372,8 @@ class ModmailCog(commands.Cog):
             mod_msg: discord.Message = await ctx.channel.fetch_message(results[0])
 
         else:
-            mod_msg = message
+
+            mod_msg: discord.Message = await ctx.channel.fetch_message(message)
             results = await self.db_conn.fetchrow("SELECT messages.message_id, messages.other_side_message_id, \
                                                           conversations.user_id \
                                                    FROM modmail.messages \
@@ -388,7 +386,8 @@ class ModmailCog(commands.Cog):
                                                    ORDER BY messages.created_at DESC \
                                                    LIMIT 1", message)
             if not results:
-                await ctx.send(embed=common_embed("Delete message", "Unable to locate a message with that ID, please check the ID and try again"))
+                await ctx.send(embed=common_embed("Delete message",
+                                                  "Unable to locate a message with that ID, please check the ID and try again"))
                 return
 
         usr = await self.bot.fetch_user(results[2])
@@ -397,6 +396,10 @@ class ModmailCog(commands.Cog):
         await mod_msg.delete()
         await usr_msg.delete()
         await self.db_conn.execute("UPDATE modmail.messages \
+                                    SET deleted=true \
+                                    WHERE \
+                                        message_id=$1", results[0])
+        await self.db_conn.execute("UPDATE modmail.all_messages_attachments \
                                     SET deleted=true \
                                     WHERE \
                                         message_id=$1", results[0])
