@@ -448,17 +448,6 @@ class ModmailCog(commands.Cog):
         await asyncio.sleep(10)
         await ctx.channel.delete()
 
-    @forward.error
-    async def forward_error(self, ctx, err: any) -> None:
-        if isinstance(err, commands.CheckFailure):
-            await ctx.send("Sorry, you don't have permission to run this command")
-        elif isinstance(err, commands.BadArgument):
-            await ctx.send(f"Bad argument passed. Please type `{self.bot.command_prefix}help forward`.")
-        elif isinstance(err, commands.MissingRequiredArgument):
-            raise commands.MissingRequiredArgument
-        else:
-            await ctx.send(f"Unknown error occurred.\n{str(err)}")
-
     # Logs takes optional user discord.Member, int
     #  displays the discord user's past modmails in pages
     #  sends paginator(s) on success, error on failure
