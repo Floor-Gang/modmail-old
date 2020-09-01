@@ -24,7 +24,7 @@ class ModmailCog(commands.Cog):
     @has_access()
     async def reply(self, ctx, *, message: typing.Optional[str]) -> None:
         if message is None and not ctx.message.attachments:
-            raise commands.MissingRequiredArgument
+            raise commands.MissingRequiredArgument(ctx.command)
 
         if message is not None and (len(message) > 2048):
             await ctx.send(embed=common_embed("Modmail Reply",
