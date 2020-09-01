@@ -68,11 +68,11 @@ class notesCog(commands.Cog):
                                                               "please check if the id is correct"))
                 return
 
-            db_notes = await self.db_conn.fetch("SELECT note_id, user_id, made_by_id, note \
-                                                 FROM modmail.notes \
-                                                 WHERE \
-                                                    user_id = $1 \
-                                                 ORDER BY note_id", user.id)
+        db_notes = await self.db_conn.fetch("SELECT note_id, user_id, made_by_id, note \
+                                             FROM modmail.notes \
+                                             WHERE \
+                                                user_id = $1 \
+                                             ORDER BY note_id", user.id)
 
         embeds = list()
         for row in db_notes:
@@ -84,7 +84,6 @@ class notesCog(commands.Cog):
                                        f"Note: '{str(row[3])}'\n```"))
 
         await disputils.BotEmbedPaginator(ctx, embeds).run()
-
 
     # editnote takes note_id int and new_text str
     #  Checks if user has access to edit this note,
