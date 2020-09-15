@@ -18,19 +18,21 @@ class adminCog(commands.Cog):
     @is_owner()
     @commands.guild_only()
     async def reloadcogs(self, ctx) -> None:
-        self.bot.reload_extension('cogs.admin')
-        self.bot.reload_extension('cogs.modmail')
-        self.bot.reload_extension('cogs.muted')
-        self.bot.reload_extension('cogs.categories')
-        self.bot.reload_extension('cogs.permissions')
-        self.bot.reload_extension('cogs.notes')
-        self.bot.reload_extension('cogs.standard_replies')
-        self.bot.reload_extension('cogs.help')
-        self.bot.reload_extension('tasks.muted_tasks')
-        self.bot.reload_extension('tasks.message_handling')
-        self.bot.reload_extension('tasks.verify_categories_tasks')
-        self.bot.reload_extension('tasks.member_join_leave')
-        self.bot.reload_extension('tasks.error_handling')
+        for cog in os.listdir('./cogs'):
+            if cog.endswith('.py') and not cog.startswith('_'):
+                try:
+                    self.bot.reload_extension(f"cogs.{cog.replace('.py', '')}")
+                except Exception as err:
+                    print(f"{cog} can't be loaded")
+                    raise err
+
+        for task in os.listdir('./tasks'):
+            if task.endswith('.py') and not task.startswith('_'):
+                try:
+                    self.bot.reload_extension(f"tasks.{task.replace('.py', '')}")
+                except Exception as err:
+                    print(f"{task} can't be loaded")
+                    raise err
 
         await ctx.send(embed=common_embed("Reload cogs", f"{ctx.author.mention}, all cogs have been reloaded."))
 
