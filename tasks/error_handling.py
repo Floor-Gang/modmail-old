@@ -28,6 +28,9 @@ class error_handling(commands.Cog):
         elif isinstance(error, commands.BadArgument):
             await self.send_help(ctx, message="Bad argument passed")
 
+        elif isinstance(error, commands.CommandNotFound):
+            pass
+
         else:
             await ctx.send(f"Unknown error occurred.\n{str(error)}")
             if self.conf.get('global', 'production').lower() != "true":

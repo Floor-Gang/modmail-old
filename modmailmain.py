@@ -13,19 +13,23 @@ class Bot(commands.Bot):
         self.db_conn = database_conn
         self.conf = conf
 
-        self.load_extension('cogs.modmail')
-        self.load_extension('cogs.admin')
-        self.load_extension('cogs.muted')
-        self.load_extension('cogs.categories')
-        self.load_extension('cogs.permissions')
-        self.load_extension('cogs.notes')
-        self.load_extension('cogs.standard_replies')
-        self.load_extension('cogs.help')
-        self.load_extension('tasks.muted_tasks')
-        self.load_extension('tasks.verify_categories_tasks')
-        self.load_extension('tasks.message_handling')
-        self.load_extension('tasks.member_join_leave')
-        self.load_extension('tasks.error_handling')
+        for cog in os.listdir('./cogs'):
+            if cog.endswith('.py') and not cog.startswith('_'):
+                try:
+                    self.load_extension(f"cogs.{cog.replace('.py', '')}")
+                except Exception as err:
+                    print(f"{cog} can't be loaded")
+                    raise err
+
+        for task in os.listdir('./tasks'):
+            if task.endswith('.py') and not task.startswith('_'):
+                try:
+                    self.load_extension(f"tasks.{task.replace('.py', '')}")
+                except Exception as err:
+                    print(f"{task} can't be loaded")
+                    raise err
+
+        print("Loaded all extensions")
 
     @staticmethod
     async def on_ready():
