@@ -1,4 +1,6 @@
 from configparser import ConfigParser
+
+import discord
 from discord.ext import commands
 import asyncpg
 import asyncio
@@ -9,7 +11,7 @@ import os
 class Bot(commands.Bot):
     def __init__(self, database_conn, conf, event_loop):
         super().__init__(command_prefix='!', description="Official Floor-Gang modmail bot", loop=event_loop,
-                         case_insensitive=True)
+                         case_insensitive=True, intents=discord.Intents.default())
         self.db_conn = database_conn
         self.conf = conf
 

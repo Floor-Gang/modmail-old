@@ -85,11 +85,8 @@ class ModmailCog(commands.Cog):
     @commands.command(aliases=['contact', 'newthread', 'new_thread'])
     @has_access()
     @commands.guild_only()
-    async def create(self, ctx, user: typing.Union[discord.Member, int]) -> None:
+    async def create(self, ctx, user: discord.Member) -> None:
         main_guild = await self.bot.fetch_guild(self.conf.get('global', 'main_server_id'))
-
-        if isinstance(user, int):
-            user = main_guild.get_member(user)
 
         if not user:
             await ctx.send(embed=common_embed("Create conversation",
