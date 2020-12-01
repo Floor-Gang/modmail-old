@@ -53,43 +53,40 @@ class MutedCog(commands.Cog):
             await ctx.send(embed=common_embed("Mute", 'User already muted'))
             return
 
-        try:
-            msg = await ctx.send(embed=common_embed("Mute", f"Muting user {user.name}..."))
-            db_user = await self.db_conn.fetch("SELECT * \
-                                                FROM modmail.muted \
-                                                WHERE \
-                                                    user_id = $1", user.id)
+        msg = await ctx.send(embed=common_embed("Mute", f"Muting user {user.name}..."))
+        db_user = await self.db_conn.fetch("SELECT * \
+                                            FROM modmail.muted \
+                                            WHERE \
+                                                user_id = $1", user.id)
 
-            if end_time:
-                time_class = Time()
-                time = time_class.add_text_to_time(end_time, datetime.datetime.now(pytz.utc))
-                if db_user:
-                    await self.db_conn.execute("UPDATE modmail.muted \
-                                                SET active = true, muted_by = $1, muted_until = $2 \
-                                                WHERE \
-                                                   user_id = $3",
-                                               ctx.author.id, time, user.id)
-                else:
-                    await self.db_conn.execute("INSERT INTO modmail.muted (user_id, muted_by, muted_until, active) \
-                                                VALUES ($1, $2, $3, true)",
-                                               user.id, ctx.author.id, time)
+        if end_time:
+            time_class = Time()
+            time = time_class.add_text_to_time(end_time, datetime.datetime.now(pytz.utc))
+            if db_user:
+                await self.db_conn.execute("UPDATE modmail.muted \
+                                            SET active = true, muted_by = $1, muted_until = $2 \
+                                            WHERE \
+                                               user_id = $3",
+                                           ctx.author.id, time, user.id)
             else:
-                if db_user:
-                    await self.db_conn.execute("UPDATE modmail.muted \
-                                                SET active = true, muted_by = $1 \
-                                                WHERE \
-                                                   user_id = $2",
-                                               ctx.author.id, user.id)
-                else:
-                    await self.db_conn.execute("INSERT INTO modmail.muted (user_id, muted_by, active) \
-                                                VALUES ($1, $2, true)",
-                                               user.id, ctx.author.id)
-        finally:
-            await msg.edit(embed=common_embed("Mute", f"Muted user {user}({user.id})"))
-            await user.send(embed=common_embed("Muted", f"Due to misuse of our modmail bot, you were muted "
-                                                        f"for {end_time}. Any messages you send here will not be "
-                                                        f"received by the moderator team."))
-
+                await self.db_conn.execute("INSERT INTO modmail.muted (user_id, muted_by, muted_until, active) \
+                                            VALUES ($1, $2, $3, true)",
+                                           user.id, ctx.author.id, time)
+        else:
+            if db_user:
+                await self.db_conn.execute("UPDATE modmail.muted \
+                                            SET active = true, muted_by = $1 \
+                                            WHERE \
+                                               user_id = $2",
+                                           ctx.author.id, user.id)
+            else:
+                await self.db_conn.execute("INSERT INTO modmail.muted (user_id, muted_by, active) \
+                                            VALUES ($1, $2, true)",
+                                           user.id, ctx.author.id)
+        await msg.edit(embed=common_embed("Mute", f"Muted user {user}({user.id})"))
+        await user.send(embed=common_embed("Muted", f"Due to misuse of our modmail bot, you were muted "
+                                                    f"for {end_time}. Any messages you send here will not be "
+                                                    f"received by the moderator team."))
 
     # Unmute takes user.
     #  unmutes discord user from modmail
@@ -110,15 +107,12 @@ class MutedCog(commands.Cog):
             return
         else:
             msg = await ctx.send(embed=common_embed("Unmute", f"Unmuting user {user}..."))
-            try:
-                await self.db_conn.execute("UPDATE modmail.muted \
-                                            SET active = false \
-                                            WHERE \
-                                               user_id = $1",
-                                           user.id)
-            finally:
-                await msg.edit(embed=common_embed("Unmute", f'Unmuted user {user.id}'))
-
+            await self.db_conn.execute("UPDATE modmail.muted \
+                                        SET active = false \
+                                        WHERE \
+                                           user_id = $1",
+                                       user.id)
+            await msg.edit(embed=common_embed("Unmute", f'Unmuted user {user.id}'))
 
     # Muted takes no parameters
     #  Gets all active muted users from modmail
@@ -135,20 +129,18 @@ class MutedCog(commands.Cog):
                                                active = true")
         paginator = discord.ext.commands.Paginator()
 
-        try:
-            for row in results:
-                user = await self.bot.fetch_user(row[0])
-                muted_by = await self.bot.fetch_user(row[1])
-                paginator.add_line(f"{user}({user.id})\n\n"
-                                   f"Muted by: {muted_by}({row[1]})\n"
-                                   f"Muted at: {row[2].strftime('%d/%m/%Y, %H:%M')}\n"
-                                   f"Muted until: {row[3].strftime('%d/%m/%Y, %H:%M')}\n"
-                                   f"--------------------------------\n")
+        for row in results:
+            user = await self.bot.fetch_user(row[0])
+            muted_by = await self.bot.fetch_user(row[1])
+            paginator.add_line(f"{user}({user.id})\n\n"
+                               f"Muted by: {muted_by}({row[1]})\n"
+                               f"Muted at: {row[2].strftime('%d/%m/%Y, %H:%M')}\n"
+                               f"Muted until: {row[3].strftime('%d/%m/%Y, %H:%M')}\n"
+                               f"--------------------------------\n")
 
-        finally:
-            await msg.delete()
-            for page in paginator.pages:
-                await ctx.send(embed=discord.Embed(color=discord.Color.red(), description=page))
+        await msg.delete()
+        for page in paginator.pages:
+            await ctx.send(embed=discord.Embed(color=discord.Color.red(), description=page))
 
     # Muted takes no parameters
     #  Gets all muted users from modmail
@@ -163,22 +155,19 @@ class MutedCog(commands.Cog):
                                             FROM modmail.muted")
         paginator = commands.Paginator()
 
-        try:
-            for row in results:
-                user = await self.bot.fetch_user(row[0])
-                muted_by = await self.bot.fetch_user(row[1])
-                paginator.add_line(f"{user}({user.id})\n\n"
-                                   f"Muted: {'✓' if bool(row[4]) else '✗'}\n"
-                                   f"Muted by: {muted_by}({row[1]})\n"
-                                   f"Muted at: {row[2].strftime('%d/%m/%Y, %H:%M')}\n"
-                                   f"Muted until: {row[3].strftime('%d/%m/%Y, %H:%M')}\n"
-                                   f"--------------------------------\n")
+        for row in results:
+            user = await self.bot.fetch_user(row[0])
+            muted_by = await self.bot.fetch_user(row[1])
+            paginator.add_line(f"{user}({user.id})\n\n"
+                               f"Muted: {'✓' if bool(row[4]) else '✗'}\n"
+                               f"Muted by: {muted_by}({row[1]})\n"
+                               f"Muted at: {row[2].strftime('%d/%m/%Y, %H:%M')}\n"
+                               f"Muted until: {row[3].strftime('%d/%m/%Y, %H:%M')}\n"
+                               f"--------------------------------\n")
 
-        finally:
-            await msg.delete()
-            for page in paginator.pages:
-                await ctx.send(embed=discord.Embed(color=discord.Color.red(), description=page))
-
+        await msg.delete()
+        for page in paginator.pages:
+            await ctx.send(embed=discord.Embed(color=discord.Color.red(), description=page))
 
     # Muted takes a user id or discord.Member
     #  Checks if user is muted
