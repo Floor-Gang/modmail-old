@@ -16,6 +16,11 @@ class ModmailCog(commands.Cog):
         self.green = 0x7CFC00
         self.blue = 0xADD8E6
 
+    # This cant be put in the main file because of super etc...
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.bot.change_presence(status=discord.Status.online, activity=discord.Game("DM me for Help!"))
+
     # Reply takes a text of max 2048 characters
     #  replies to modmail with the inputted text
     #  sends reply on success, error on failure
