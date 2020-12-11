@@ -114,10 +114,11 @@ class ModmailCog(commands.Cog):
                 await ctx.send(embed=common_embed("Create conversation",
                                                   "You do not have permissions in this category."))
                 return
-        except:
+        except Exception as e:
             if ctx.author.id not in json.loads(self.conf.get('global', 'owners')):
                 await ctx.send(embed=common_embed("Create conversation",
                                                   "You do not have permissions in this category."))
+                await ctx.send("Error please ping Matthew {}", e)
                 return
 
         channel = await guild.create_text_channel(name=f'{user.name}-{user.discriminator}', category=category)
