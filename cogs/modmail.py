@@ -196,7 +196,8 @@ class ModmailCog(commands.Cog):
         user = await self.bot.fetch_user(user_id=conv[0])
         try:
             await user.send(embed=common_embed("Conversation closed",
-                                               "The conversation was closed, we hope that we were able to help you!"))
+                                               "This is an automated message informing you that the thread has been closed, "
+                                               "sending another message will open a new thread, so if you don't need any other help please don't reply"))
         except discord.Forbidden:
             await ctx.send(embed=common_embed("Conversation closed",
                                               "The user disabled dm's so no message's arrived"))
